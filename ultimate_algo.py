@@ -1710,3 +1710,5 @@ while True:
         error_msg = f"⚠️ Main loop error: {str(e)[:100]}"
         send_telegram(error_msg)
         time.sleep(60)
+        
+        
