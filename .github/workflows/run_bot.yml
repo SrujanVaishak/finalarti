@@ -1,14 +1,14 @@
 name: Self-Learning Algo (20-Hour Run)
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:
   schedule:
-    - cron: '15 3 * * 1-5'  # Runs at 8:45 AM IST (3:15 UTC) on weekdays
+    - cron: '15 3 * * 1-5'
 
 jobs:
   run-algo:
     runs-on: ubuntu-latest
-    timeout-minutes: 2000  # 20 hours max
+    timeout-minutes: 2000
 
     steps:
     - name: Checkout repository
@@ -17,7 +17,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.9'  # ✅ Changed from 3.11 to 3.9
 
     - name: Install dependencies
       run: |
@@ -37,22 +37,11 @@ jobs:
         python ultimate_algo.py
 
     - name: Upload learning data as artifact
-      uses: actions/upload-artifact@v4  # ✅ FIXED: Changed from v3 to v4
+      uses: actions/upload-artifact@v4
       with:
         name: self-learning-data
         path: self_learning_data.json
         retention-days: 90
-        compression-level: 0  # No compression for JSON
-
-    - name: Upload complete logs
-      if: always()  # Upload even if the workflow fails
-      uses: actions/upload-artifact@v4
-      with:
-        name: algo-logs
-        path: |
-          *.log
-          *.json
-        retention-days: 30
 
     - name: Notify completion
       run: |
