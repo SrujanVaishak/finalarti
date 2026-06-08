@@ -11,4 +11,3 @@ datetime
 pycryptodome
 multitasking
 peewee
-numpy
