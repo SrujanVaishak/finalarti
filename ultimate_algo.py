@@ -1,7 +1,7 @@
 # ============================================================
-# ULTIMATE ALGO WITH SELF-LEARNING CAPABILITY
-# Trains itself on every signal - gets better with time
-# Saves learning data to self_learning_data.json
+# SELF-LEARNING ULTIMATE ALGO - COMPLETE CODE
+# Creates JSON file immediately on startup
+# Trains itself on every signal
 # ============================================================
 
 import os
@@ -23,41 +23,46 @@ import numpy as np
 warnings.filterwarnings("ignore")
 
 # ============================================================
-# SELF-LEARNING DATABASE SETUP
+# SELF-LEARNING DATABASE SETUP - CREATES FILE IMMEDIATELY
 # ============================================================
 
 LEARNING_DATA_FILE = "self_learning_data.json"
-learning_db = {}  # In-memory database
-total_learning_updates = 0
 
-def load_learning_data():
-    """Load previously learned data from JSON file"""
-    global learning_db
-    if os.path.exists(LEARNING_DATA_FILE):
-        try:
-            with open(LEARNING_DATA_FILE, 'r') as f:
-                learning_db = json.load(f)
-            print(f"✅ Loaded learning data: {len(learning_db)} patterns")
-        except:
-            learning_db = {}
-            print("⚠️ Could not load learning data, starting fresh")
+def ensure_learning_file_exists():
+    """Create empty learning file immediately on startup"""
+    if not os.path.exists(LEARNING_DATA_FILE):
+        initial_data = {
+            "_metadata": {
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "version": "2.0",
+                "total_signals_learned": 0,
+                "total_updates": 0
+            }
+        }
+        with open(LEARNING_DATA_FILE, 'w') as f:
+            json.dump(initial_data, f, indent=2)
+        print(f"✅ Created new learning file: {LEARNING_DATA_FILE}")
+        return initial_data
     else:
-        learning_db = {}
-        print("🆕 No existing learning data - starting fresh")
+        print(f"✅ Learning file already exists: {LEARNING_DATA_FILE}")
+        with open(LEARNING_DATA_FILE, 'r') as f:
+            return json.load(f)
+
+# CREATE THE FILE NOW (even before anything else runs)
+learning_db = ensure_learning_file_exists()
+total_learning_updates = 0
 
 def save_learning_data():
     """Save learned data to JSON file"""
     global learning_db, total_learning_updates
     try:
-        # Add metadata
-        learning_db['_metadata'] = {
-            'last_updated': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'total_updates': total_learning_updates,
-            'version': '2.0'
-        }
+        learning_db['_metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        learning_db['_metadata']['total_updates'] = total_learning_updates
         
         with open(LEARNING_DATA_FILE, 'w') as f:
             json.dump(learning_db, f, indent=2)
+        print(f"💾 Learning data saved to {LEARNING_DATA_FILE}")
         return True
     except Exception as e:
         print(f"❌ Failed to save learning data: {e}")
@@ -138,7 +143,6 @@ def update_learning_record(signal_data, targets_hit, final_pnl, sl_hit, max_pric
         record['avg_success_ratio'] = record['successful_signals'] / record['total_signals']
         
         # Calculate confidence score (0-100)
-        # Formula: (success_ratio * 70) + (avg_pnl_factor * 30) - sl_penalty
         avg_pnl = record['total_pnl'] / record['total_signals'] if record['total_signals'] > 0 else 0
         pnl_factor = min(100, max(0, (avg_pnl + 100) / 2)) if avg_pnl < 0 else min(100, avg_pnl / 2)
         
@@ -227,9 +231,6 @@ def get_learning_summary():
             f"🔄 Total Updates: {metadata.get('total_updates', 0)}\n"
             f"📅 Last Trained: {metadata.get('last_updated', 'Never')}\n"
             f"─────────────────────────")
-
-# Load existing learning data on startup
-load_learning_data()
 
 # ============================================================
 # YOUR ORIGINAL CODE STARTS HERE (COMPLETELY UNCHANGED)
@@ -337,11 +338,18 @@ API_KEY = os.getenv("API_KEY")
 CLIENT_CODE = os.getenv("CLIENT_CODE")
 PASSWORD = os.getenv("PASSWORD")
 TOTP_SECRET = os.getenv("TOTP_SECRET")
-TOTP = pyotp.TOTP(TOTP_SECRET).now()
+
+# Only generate TOTP if secret exists
+if TOTP_SECRET:
+    TOTP = pyotp.TOTP(TOTP_SECRET).now()
+else:
+    TOTP = None
+    print("⚠️ TOTP_SECRET not set - login may fail")
 
 client = SmartConnect(api_key=API_KEY)
-session = client.generateSession(CLIENT_CODE, PASSWORD, TOTP)
-feedToken = client.getfeedToken()
+if TOTP:
+    session = client.generateSession(CLIENT_CODE, PASSWORD, TOTP)
+    feedToken = client.getfeedToken()
 
 # --------- TELEGRAM ---------
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -1326,7 +1334,6 @@ def monitor_price_live(symbol, entry, targets, sl, fakeout, thread_id, strategy_
                     "final_pnl": final_pnl
                 })
                 daily_signals.append(signal_data)
-                # Update learning with outcome
                 update_learning_record(signal_data, sum(targets_hit), final_pnl, sl_hit, max_price_reached)
                 clear_completed_signal(signal_id)
                 break
@@ -1372,7 +1379,6 @@ def monitor_price_live(symbol, entry, targets, sl, fakeout, thread_id, strategy_
                             "final_pnl": final_pnl
                         })
                         daily_signals.append(signal_data)
-                        # Update learning with outcome
                         update_learning_record(signal_data, sum(targets_hit), final_pnl, sl_hit, max_price_reached)
                         clear_completed_signal(signal_id)
                         break
@@ -1392,7 +1398,6 @@ def monitor_price_live(symbol, entry, targets, sl, fakeout, thread_id, strategy_
                             "final_pnl": final_pnl
                         })
                         daily_signals.append(signal_data)
-                        # Update learning with outcome
                         update_learning_record(signal_data, len(targets), final_pnl, sl_hit, max_price_reached)
                         clear_completed_signal(signal_id)
                         break
@@ -1479,7 +1484,6 @@ def send_individual_signal_reports():
 def send_signal(index, side, df, fakeout, strategy_key):
     global signal_counter, all_generated_signals
     
-    # 🧠 SELF-LEARNING CHECK BEFORE SENDING SIGNAL
     strategy_name = STRATEGY_NAMES.get(strategy_key, strategy_key.upper())
     allow_signal, confidence, reason = should_allow_signal(index, strategy_name)
     
@@ -1647,10 +1651,14 @@ EOD_REPORT_SENT = False
 initialize_strategy_tracking()
 
 print("🧠 SELF-LEARNING ALGO STARTED")
+print(f"📁 Learning data file: {LEARNING_DATA_FILE}")
+print(json.dumps(learning_db, indent=2))
+
 send_telegram("🧠 SELF-LEARNING AI ALGO STARTED\n"
               "✅ Will learn from every signal\n"
               "✅ Gets smarter every day\n"
-              "✅ Confidence-based filtering active")
+              "✅ Confidence-based filtering active\n"
+              f"✅ Learning file: {LEARNING_DATA_FILE}")
 
 while True:
     try:
@@ -1710,5 +1718,3 @@ while True:
         error_msg = f"⚠️ Main loop error: {str(e)[:100]}"
         send_telegram(error_msg)
         time.sleep(60)
-        
-        
