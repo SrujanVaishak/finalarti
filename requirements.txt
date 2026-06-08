@@ -1,0 +1,14 @@
+ta
+yfinance
+requests
+pyotp
+pandas
+SmartApi
+logzero
+websocket-client
+smartapi-python
+datetime
+pycryptodome
+multitasking
+peewee
+numpy
